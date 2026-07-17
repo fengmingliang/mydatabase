@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的博客收藏</title>
+    <style>
+        /* 全局样式 */
+        :root {
+            --primary-color: #4a90e2; /* 主色调：清新蓝 */
+            --bg-color: #f5f7fa;      /* 背景色：极浅灰 */
+            --card-bg: #ffffff;       /* 卡片背景：纯白 */
+            --text-main: #333333;     /* 主文字颜色 */
+            --text-sub: #666666;      /* 副文字颜色 */
+            --shadow: 0 4px 6px rgba(0, 0, 0, 0.05); /* 柔和阴影 */
+            --shadow-hover: 0 8px 15px rgba(0, 0, 0, 0.1); /* 悬停阴影 */
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        /* 容器样式 */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+
+        /* 头部样式 */
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            color: var(--primary-color);
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 300; /* 细字体，更清新 */
+        }
+
+        p.subtitle {
+            color: var(--text-sub);
+            font-size: 1.1rem;
+        }
+
+        /* 博客卡片网格布局 */
+        .blog-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 25px;
+        }
+
+        /* 单个博客卡片样式 */
+        .blog-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease; /* 平滑过渡动画 */
+            text-decoration: none; /* 去除链接下划线 */
+            color: inherit;
+            display: block;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 卡片悬停效果 */
+        .blog-card:hover {
+            transform: translateY(-5px); /* 向上浮动 */
+            box-shadow: var(--shadow-hover);
+        }
+
+        .blog-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background-color: var(--primary-color);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .blog-card:hover::before {
+            opacity: 1;
+        }
+
+        /* 卡片内容 */
+        .blog-card h2 {
+            margin: 0 0 10px;
+            font-size: 1.4rem;
+            color: var(--text-main);
+            font-weight: 600;
+        }
+
+        .blog-card p {
+            margin: 0;
+            color: var(--text-sub);
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+
+        /* 添加新链接的按钮样式 (可选) */
+        .add-link {
+            display: inline-block;
+            margin-top: 40px;
+            padding: 12px 24px;
+            background-color: var(--primary-color);
+            color: white;
+            text-decoration: none;
+            border-radius: 25px;
+            transition: background-color 0.3s ease;
+        }
+
+        .add-link:hover {
+            background-color: #357abd;
+        }
+
+        /* 页脚样式 */
+        footer {
+            text-align: center;
+            margin-top: 60px;
+            color: var(--text-sub);
+            font-size: 0.9rem;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            h1 { font-size: 2rem; }
+            .container { padding: 20px 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>我的博客收藏</h1>
+        <p class="subtitle">探索知识的海洋</p>
+    </header>
+
+    <!-- 博客卡片容器 -->
+    <div class="blog-grid">
+        <!-- 在这里添加你的博客链接 -->
+        <!-- 将 href 属性设置为同目录下的网页文件名，例如 blog1.html -->
+        <a href="gtihub3-hangqing-database.html" class="blog-card">
+            <h2> 编辑数据库</h2>
+            <p> 增删改数据库 hangqing.md </p>
+        </a>
+
+        <a href="github-markdown.html" class="blog-card">
+            <h2> 浏览数据库 </h2>
+            <p> 查阅数据库</p>
+        </a>
+
+   
+
+        <!-- 添加更多博客卡片... -->
+    </div>
+
+    <footer>
+        <p>&copy; 2026 我的收藏. All rights reserved.</p>
+    </footer>
+</div>
+
+</body>
+</html>

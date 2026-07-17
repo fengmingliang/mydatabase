@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>GitHub 文件完整管理工具 (增删改查)</title>
+    <style>
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        input, textarea { width: 100%; margin-bottom: 10px; padding: 8px; box-sizing: border-box; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        
+        /* 按钮通用样式 */
+        button { color: white; border: none; padding: 10px 20px; cursor: pointer; font-size: 14px; margin-right: 5px; margin-bottom: 5px; border-radius: 4px;}
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        
+        /* 各个按钮的颜色区分 */
+        .btn-read { background: #0366d6; } /* 蓝 */
+        .btn-add { background: #2ea44f; }  /* 绿 */
+        .btn-update { background: #d29922; } /* 橙/黄 */
+        .btn-delete { background: #d73a49; } /* 红 */
+
+        #log { margin-top: 20px; background: #f6f8fa; padding: 10px; border: 1px solid #d0d7de; white-space: pre-wrap; font-family: monospace; font-size: 12px;}
+    </style>
+</head>
+<body>
+
+    <h2>GitHub 文件管理控制台 (CRUD)</h2>
+    
+    <label>Personal Access Token (PAT):</label> 
+    <input type="password" id="token"  value="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" class="auto-save-input" placeholder="ghp_xxxxxxxxxxxx">
+    
+    <div style="display: flex; gap: 10px;">
+        <div style="flex:1">
+            <label>Owner (用户名):</label>
+            <input type="text" id="owner"  value="fengmingliang" class="auto-save-input" placeholder="octocat">
+        </div>
+        <div style="flex:1">
+            <label>Repo (仓库名):</label>
+            <input type="text" id="repo"  value="mydatabase"  class="auto-save-input" placeholder="Hello-World">
+        </div>
+    </div>
+    
+    <label>File Path (文件路径):</label>
+    <input type="text" id="path"  value="hangqing.md" class="auto-save-input" placeholder="例如: src/new-file.js">
+    
+    <!-- 操作按钮区 -->
+    <div style="margin: 15px 0; padding: 10px; background: #e1e4e8; border-radius: 6px;">
+        <button class="btn-read" onclick="readFile()">📖 读取文件</button>
+        <button class="btn-add" onclick="addFile()">➕ 新增文件</button>
+        <button class="btn-update" onclick="updateFile()">💾 修改(覆盖)文件</button>
+        <button class="btn-delete" onclick="deleteFile()">🗑️ 删除文件</button>
+    </div>
+
+    <label>Content (文件内容):</label>
+    <textarea id="content" rows="15" placeholder="在此处编辑内容..."></textarea>
+    
+    <label>Commit Message (提交说明):</label>
+    <input type="text" id="message" value="Update file via web script">
+    
+    <div id="log">准备就绪...</div>
+
+    <script>
+        // 通用配置获取
+        function getConfig() {
+            return {
+                token: document.getElementById('token').value,
+                owner: document.getElementById('owner').value,
+                repo: document.getElementById('repo').value,
+                path: document.getElementById('path').value,
+                content: document.getElementById('content').value,
+                message: document.getElementById('message').value,
+                log: document.getElementById('log')
+            };
+        }
+
+        // 通用 API 请求头
+        function getHeaders(token) {
+            return {
+                'Authorization': `token ${token}`,
+                'Accept': 'application/vnd.github.v3+json'
+            };
+        }
+
+        // --- 1. 读取文件 ---
+        async function readFile() {
+            const { token, owner, repo, path, log } = getConfig();
+            if (!checkInputs(token, owner, repo, path, log)) return;
+
+            log.innerText = "⏳ 正在读取...";
+            try {
+                const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+                const res = await fetch(url, { headers: getHeaders(token) });
+                
+                if (!res.ok) throw new Error(`读取失败 (${res.status}): 文件可能不存在`);
+                
+                const data = await res.json();
+                // Base64 解码 (支持中文)
+                const decoded = decodeURIComponent(escape(window.atob(data.content)));
+                document.getElementById('content').value = decoded;
+                log.innerText = `✅ 读取成功!\nSHA: ${data.sha}\n大小: ${decoded.length} 字符`;
+            } catch (e) { log.innerText = `❌ 错误: ${e.message}`; }
+        }
+
+        // --- 2. 新增文件 (严格模式：文件必须不存在) ---
+        async function addFile() {
+            const { token, owner, repo, path, content, message, log } = getConfig();
+            if (!checkInputs(token, owner, repo, path, log)) return;
+            if (!content) { log.innerText = "❌ 内容不能为空"; return; }
+
+            log.innerText = "⏳ 正在检查文件是否存在...";
+            try {
+                const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+                
+                // 第一步：检查是否存在
+                const checkRes = await fetch(url, { headers: getHeaders(token), method: 'HEAD' }); // 使用 HEAD 更省流量
+                
+                if (checkRes.status === 200) {
+                    log.innerText = "❌ 操作失败：文件已存在！\n如需覆盖请使用“修改(覆盖)”按钮。";
+                    return;
+                }
+
+                // 第二步：如果 404，则创建
+                log.innerText = "🆔 文件不存在，正在创建...";
+                await createFileAPI(url, token, message, content, log);
+
+            } catch (e) { log.innerText = `❌ 错误: ${e.message}`; }
+        }
+
+        // --- 3. 修改文件 (覆盖模式：存在则更新，不存在则创建) ---
+        async function updateFile() {
+            const { token, owner, repo, path, content, message, log } = getConfig();
+            if (!checkInputs(token, owner, repo, path, log)) return;
+
+            log.innerText = "⏳ 正在获取文件状态...";
+            try {
+                const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+                
+                // 获取文件信息以判断是否存在并获取 SHA
+                const infoRes = await fetch(url, { headers: getHeaders(token) });
+                
+                if (infoRes.ok) {
+                    // 文件存在 -> 获取 SHA 并更新
+                    const data = await infoRes.json();
+                    log.innerText = "📝 文件已存在，准备覆盖...";
+                    await updateFileAPI(url, token, message, content, data.sha, log);
+                } else if (infoRes.status === 404) {
+                    // 文件不存在 -> 创建
+                    log.innerText = "🆕 文件不存在，自动创建中...";
+                    await createFileAPI(url, token, message, content, log);
+                } else {
+                    throw new Error(`获取信息失败 (${infoRes.status})`);
+                }
+            } catch (e) { log.innerText = `❌ 错误: ${e.message}`; }
+        }
+
+        // --- 4. 删除文件 ---
+        async function deleteFile() {
+            const { token, owner, repo, path, message, log } = getConfig();
+            if (!checkInputs(token, owner, repo, path, log)) return;
+
+            // 安全确认
+            if (!confirm(`确定要删除 ${owner}/${repo}/${path} 吗？此操作不可恢复！`)) return;
+
+            log.innerText = "⏳ 正在准备删除...";
+            try {
+                const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+                
+                // 第一步：必须先获取 SHA
+                const infoRes = await fetch(url, { headers: getHeaders(token) });
+                
+                if (!infoRes.ok) {
+                    if (infoRes.status === 404) throw new Error("删除失败：文件不存在");
+                    throw new Error(`获取文件信息失败 (${infoRes.status})`);
+                }
+
+                const data = await infoRes.json();
+                const sha = data.sha;
+                
+                log.innerText = `🗑️ 找到文件 (SHA: ${sha.substring(0,7)})，正在删除...`;
+
+                // 第二步：发送 DELETE 请求
+                const delRes = await fetch(url, {
+                    method: 'DELETE',
+                    headers: getHeaders(token),
+                    body: JSON.stringify({
+                        message: message,
+                        sha: sha
+                    })
+                });
+
+                if (delRes.ok) {
+                    const delData = await delRes.json();
+                    log.innerText = `✅ 删除成功！\nCommit: ${delData.commit.html_url}`;
+                    // 清空内容框
+                    document.getElementById('content').value = "";
+                } else {
+                    const err = await delRes.json();
+                    throw new Error(err.message);
+                }
+
+            } catch (e) { log.innerText = `❌ 错误: ${e.message}`; }
+        }
+
+        // --- 辅助 API 函数 ---
+
+        // 创建文件 (PUT, 无 SHA)
+        async function createFileAPI(url, token, message, content, log) {
+            const contentBase64 = btoa(unescape(encodeURIComponent(content)));
+            const res = await fetch(url, {
+                method: 'PUT',
+                headers: getHeaders(token),
+                body: JSON.stringify({ message, content: contentBase64 })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                log.innerText = `✅ 创建成功！\nCommit: ${data.commit.html_url}`;
+            } else {
+                throw new Error(data.message);
+            }
+        }
+
+        // 更新文件 (PUT, 带 SHA)
+        async function updateFileAPI(url, token, message, content, sha, log) {
+            const contentBase64 = btoa(unescape(encodeURIComponent(content)));
+            const res = await fetch(url, {
+                method: 'PUT',
+                headers: getHeaders(token),
+                body: JSON.stringify({ message, content: contentBase64, sha })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                log.innerText = `✅ 更新成功！\nCommit: ${data.commit.html_url}`;
+            } else {
+                throw new Error(data.message);
+            }
+        }
+
+        // 简单校验
+        function checkInputs(token, owner, repo, path, log) {
+            if (!token || !owner || !repo || !path) {
+                log.innerText = "❌ 请填写 Token, Owner, Repo 和 Path";
+                return false;
+            }
+            return true;
+        }
+    </script>
+</body>
+</html>
